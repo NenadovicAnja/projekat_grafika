@@ -24,9 +24,13 @@ void processInput(GLFWwindow *window);
 unsigned int loadTexture(const char *path);
 unsigned int loadCubeMap(vector<std::string> faces);
 
+int randRange(int low,int high);
+void renderQuad();
+void renderCube();
+
 // settings
 const unsigned int SCR_WIDTH = 1200;
-const unsigned int SCR_HEIGHT = 900;
+const unsigned int SCR_HEIGHT = 800;
 
 // camera
 float lastX = SCR_WIDTH / 2.0f;
@@ -53,18 +57,17 @@ struct ProgramState {
     Camera camera;
     bool CameraMouseMovementUpdateEnabled = true;
     bool spotlight = true;
+    bool plight=true;
     PointLight pointLight;
-    bool grayscaleEnabled = false;
-    bool AAEnabled = true;
+    float ambientLight = 0.0f;
 
     ProgramState()
-            : camera(glm::vec3(0.0f, 0.0f, 3.0f)) {}
+            : camera(glm::vec3(-0.5f, 5.0f, 100.0f)) {}
 
     void SaveToFile(std::string filename);
 
     void LoadFromFile(std::string filename);
     glm::vec3 tempPosition=glm::vec3(0.0f, 2.0f, 0.0f);
-    float tempScale=1.0f;
     float tempRotation=0.0f;
 };
 void ProgramState::SaveToFile(std::string filename) {
@@ -121,9 +124,6 @@ int main() {
     }
     glfwMakeContextCurrent(window);
 
-    // dozvoljava da prozor menja velicinu, ali cuva 4:3 odnos
-    glfwSetWindowAspectRatio(window, 4, 3);
-
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
@@ -137,7 +137,12 @@ int main() {
         return -1;
     }
 
+    glEnable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
+
+    //Face culling
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
 
     // tell stb_image.h to flip loaded textures on the y-axis (before loading model).
     stbi_set_flip_vertically_on_load(true);
@@ -156,8 +161,6 @@ int main() {
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330 core");
-
-    glEnable(GL_DEPTH_TEST);
 
     // build and compile shaders
     Shader ourShader("resources/shaders/2.model_lighting.vs", "resources/shaders/2.model_lighting.fs");
