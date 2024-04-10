@@ -167,11 +167,12 @@ int main() {
     Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
 
     // load models
-    Model ourModel("resources/objects/backpack/backpack.obj");
-
-
-
-    ourModel.SetShaderTextureNamePrefix("material.");
+    //model vecih stena
+    Model bigRock("resources/objects/stone/SmallArch_Obj.obj");
+    bigRock.SetShaderTextureNamePrefix("material.");
+    //stene
+    Model Rock6("resources/objects/Rock_5/Rock_5/Rock_5.obj");
+    Rock6.SetShaderTextureNamePrefix("material.");
 
     PointLight& pointLight = programState->pointLight;
     pointLight.position = glm::vec3(4.0f, 4.0, 0.0);
