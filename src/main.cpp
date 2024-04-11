@@ -7,7 +7,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
+
 
 #include <learnopengl/filesystem.h>
 #include <learnopengl/shader.h>
@@ -15,7 +15,7 @@
 #include <learnopengl/model.h>
 
 #include <iostream>
-
+#include <ctime>
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
@@ -51,6 +51,7 @@ struct PointLight {
     float linear;
     float quadratic;
 };
+
 struct ProgramState {
     glm::vec3 clearColor = glm::vec3(0);
     bool ImGuiEnabled = false;
@@ -81,7 +82,8 @@ void ProgramState::SaveToFile(std::string filename) {
         << camera.Front.x << '\n'
         << camera.Front.y << '\n'
         << camera.Front.z << '\n'
-        << spotlight << '\n';
+        << spotlight << '\n'
+        << ambientLight << '\n';
 }
 void ProgramState::LoadFromFile(std::string filename) {
     std::ifstream in(filename);
@@ -95,11 +97,11 @@ void ProgramState::LoadFromFile(std::string filename) {
            >> camera.Front.x
            >> camera.Front.y
            >> camera.Front.z
-           >> spotlight;
+           >> spotlight
+           >> ambientLight;
     }
 }
 ProgramState *programState;
-
 
 void DrawImGui(ProgramState *programState);
 
@@ -165,14 +167,14 @@ int main() {
     // build and compile shaders
     Shader ourShader("resources/shaders/2.model_lighting.vs", "resources/shaders/2.model_lighting.fs");
     Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
-
+    Shader gBufferShader("resources/shaders/gBuffer.vs", "resources/shaders/gBuffer.fs");
+    Shader lightingPassShader("resources/shaders/lightingPass.vs","resources/shaders/lightingPass.fs");
+    Shader lightShowShader("resources/shaders/lightShow.vs","resources/shaders/lightShow.fs");
     // load models
+
     //model vecih stena
-    Model bigRock("resources/objects/stone/SmallArch_Obj.obj");
+    Model bigRock("resources/objects/Models/stone/SmallArch_Obj.obj");
     bigRock.SetShaderTextureNamePrefix("material.");
-    //stene
-    Model Rock6("resources/objects/Rock_5/Rock_5/Rock_5.obj");
-    Rock6.SetShaderTextureNamePrefix("material.");
     //modeli riba
     Model Riba1("resources/objects/Models/riba1/13005_Bicolor_dottyback_v2_l3.obj");
     Model Riba2("resources/objects/Models/riba2/13014_Six_Line_Wrasse_v1_l3.obj");
@@ -186,7 +188,6 @@ int main() {
     //model podmornice
     Model Podmornica("resources/objects/Models/Podmornica3/Submarine.obj");
     Podmornica.SetShaderTextureNamePrefix("material.");
-
 
 
     PointLight& pointLight = programState->pointLight;
@@ -272,21 +273,6 @@ int main() {
             -1.0f, -1.0f,  1.0f,
             1.0f, -1.0f,  1.0f
     };
-    //kamenje VAO
-    /*
-    unsigned int transparentVAO2, transparentVBO2;
-    glGenVertexArrays(1, &transparentVAO2);
-    glGenBuffers(1, &transparentVBO2);
-    glBindVertexArray(transparentVAO2);
-    glBindBuffer(GL_ARRAY_BUFFER, transparentVBO2);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVertices2), transparentVertices2, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)nullptr);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-    glBindVertexArray(0);*/
 
     //ravan VAO
     unsigned int ravanVBO, ravanVAO, ravanEBO;
@@ -324,6 +310,8 @@ int main() {
     unsigned int diffuseMap = loadTexture(FileSystem::getPath("resources/textures/sand.jpg").c_str());
     unsigned int specularMap = loadTexture(FileSystem::getPath("resources/textures/Black.jpg").c_str());
     unsigned int stoneTexture = loadTexture(FileSystem::getPath("resources/textures/ss.png").c_str());
+    //tekstura za podmornicu
+    unsigned int PodmornicaTekstura = loadTexture(FileSystem::getPath("resources/textures/metal.jpg").c_str());
     //load textures
 
     vector<std::string> faces{
@@ -418,10 +406,11 @@ int main() {
 
     int randArrayX[50];
     for(int i=0;i<50;i++)
-        randArrayX[i]= randRange(-50,50);
+        randArrayX[i]= randRange(-100,100);
     int randArrayY[50];
     for(int i=0;i<50;i++)
-        randArrayY[i]= randRange(-50,50);
+        randArrayY[i]= randRange(-100,100);
+
     // render loop
     while (!glfwWindowShouldClose(window)) {
         // per-frame time logic
@@ -433,111 +422,160 @@ int main() {
         processInput(window);
 
         // render
-        glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
+        glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom),
+                                                (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 view = programState->camera.GetViewMatrix();
+        glm::mat4 model = glm::mat4(1.0f);
 
         // don't forget to enable shader before setting uniforms
         ourShader.use();
         ourShader.setVec3("viewPosition", programState->camera.Position);
         ourShader.setFloat("material.shininess", 32.0f);
-        //skyboxShader.setBool("celShading", true);   //moram da proverim jos sta ovo radi zapravo
 
         // view/projection transformations
-        glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom),
-                                                (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
-        glm::mat4 view = programState->camera.GetViewMatrix();
+        //glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom),
+        //                                      (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
+        //glm::mat4 view = programState->camera.GetViewMatrix();
         ourShader.setMat4("projection", projection);
         ourShader.setMat4("view", view);
 
-
+        //OSTALO JE DA SE NADJE NEKA BOLJA TEKSTURA ZA PODMORNICU I DA SE PROGUSTE MODELI
         // directional light
         ourShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
-        ourShader.setVec3("dirLight.ambient", 0.0f, 0.0f, 0.0f);
+        if(programState->ambientLight)
+            ourShader.setVec3("dirLight.ambient", 0.5f, 0.5f, 0.5f);
+        else
+            ourShader.setVec3("dirLight.ambient", 0.0f, 0.0f, 0.0f);
         ourShader.setVec3("dirLight.diffuse", 0.05f, 0.05f, 0.05);
         ourShader.setVec3("dirLight.specular", 0.2f, 0.2f, 0.2f);
+
+        ourShader.setVec3("pointLight.position", lightPos);
+        if(programState->plight){
+            ourShader.setVec3("pointLight.ambient", glm::vec3(1.0f));
+            ourShader.setVec3("pointLight.diffuse", 0.1f, 0.1f, 0.1);
+            ourShader.setVec3("pointLight.specular", 0.5f, 0.5f, 0.5f);
+        }
+        else{
+            ourShader.setVec3("pointLight.ambient", glm::vec3(0.0f));
+            ourShader.setVec3("pointLight.diffuse", 0.0f, 0.0f, 0.0f);
+            ourShader.setVec3("pointLight.specular", 0.0f, 0.0f, 0.0f);
+        }
+        ourShader.setFloat("pointLight.constant", 1.0f);
+        ourShader.setFloat("pointLight.linear", 0.09f);
+        ourShader.setFloat("pointLight.quadratic", 0.032f);
 
 
         ourShader.setVec3("svetlo.position", programState->camera.Position);
         ourShader.setVec3("svetlo.direction", programState->camera.Front);
         ourShader.setVec3("svetlo.ambient", 0.0f, 0.0f, 0.0f);
-        if(programState->spotlight) {
+        if (programState->spotlight) {
             ourShader.setVec3("svetlo.diffuse", 1.0f, 1.0f, 1.0f);
-            ourShader.setVec3("svetlo.specular", 1.0f, 1.0f, 1.0f);
-        }
-        else {
+            ourShader.setVec3("svetlo.specular", glm::vec3(0.5f));
+        } else {
             ourShader.setVec3("svetlo.diffuse", 0.0f, 0.0f, 0.0f);
             ourShader.setVec3("svetlo.specular", 0.0f, 0.0f, 0.0f);
         }
-        ourShader.setFloat("svetlo.constant", 1.0f);
-        ourShader.setFloat("svetlo.linear", 0.09f);
+        ourShader.setFloat("svetlo.constant", 0.6f);
+        ourShader.setFloat("svetlo.linear", 0.9f);
         ourShader.setFloat("svetlo.quadratic", 0.032f);
-        ourShader.setFloat("svetlo.cutOff", glm::cos(glm::radians(10.0f)));
-        ourShader.setFloat("svetlo.outerCutOff", glm::cos(glm::radians(15.0f)));
+        ourShader.setFloat("svetlo.cutOff", glm::cos(glm::radians(15.0f)));
+        ourShader.setFloat("svetlo.outerCutOff", glm::cos(glm::radians(30.0f)));
 
-        //Renderovanje vecih stena:
-        for(int i=0;i<40;i+=7){
+
+
+        //Renderovanje vecih stena (ZAVRSENO)
+        for(int i=0;i<50;i+=3){
             model = glm::mat4(1.0f);
             int x,z;
-            srand(time(NULL));
-            model = glm::translate(model, glm::vec3(randArrayY[i], 0.6f,randArrayX[i]));
+            if(i % 4 == 0){
+                x = randArrayX[i];
+                z = randArrayY[i];
+            } else if(i%4==1) {
+                x = -randArrayX[i];
+                z = -randArrayY[i];
+            }
+            else if(i%4==2){
+                x = randArrayX[i];
+                z = -randArrayY[i];
+            }
+            else{
+                x = -randArrayX[i];
+                z = randArrayY[i];
+            }
+            model = glm::translate(model, glm::vec3(randArrayY[i], 0.6f,-randArrayX[i]));
             model = glm::scale(model, glm::vec3(0.15f));
             model = glm::rotate(model, glm::radians(programState->tempRotation), glm::vec3(0, 1, 0));
             ourShader.setMat4("model", model);
             bigRock.Draw(ourShader);
         }
 
-        //Renderovanje podmornice: (dodati boju za lignju)
+        //Renderovanje podmornice:
         model = glm::mat4(1.0f);
         model = glm::translate(model,glm::vec3(0.0f,15.0f,0.0f));
-        model = glm::scale(model, glm::vec3(0.7f));
+        model = glm::scale(model, glm::vec3(0.9f));
+        model = glm::rotate(model, glm::radians(-180.0f), glm::vec3(0, 1, 0));
         ourShader.setMat4("model", model);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, PodmornicaTekstura);
         Podmornica.Draw(ourShader);
 
-
         //Renderovanje korala:
-        for(int i = 0; i<50; i+=4)
-        {
+        for(int i=0;i<50;i+=1){
             model = glm::mat4(1.0f);
             int x,z;
-            if(i % 2 == 0){
+            if(i % 4 == 0){
                 x = randArrayX[i];
                 z = randArrayY[i];
-            } else {
+            } else if(i%4==1) {
                 x = -randArrayX[i];
                 z = -randArrayY[i];
             }
-            model = glm::translate(model,glm::vec3(randArrayY[i],0.0f,randArrayX[i]));
-            model = glm::scale(model, glm::vec3(0.04f));
+            else if(i%4==2){
+                x = randArrayX[i];
+                z = -randArrayY[i];
+            }
+            else{
+                x = -randArrayX[i];
+                z = randArrayY[i];
+            }
+            model = glm::translate(model, glm::vec3(randArrayY[i], 0.0f,randArrayX[i]));
+            model = glm::scale(model, glm::vec3(0.05f));
             model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1, 0, 0));
             ourShader.setMat4("model", model);
             Koral1.Draw(ourShader);
         }
 
-
-
-        for(int i = 0; i<50; i+=6)
-        {
+        for(int i=0;i<50;i+=2){
             model = glm::mat4(1.0f);
             int x,z;
-            if(i % 2 == 0){
+            if(i % 4 == 0){
                 x = randArrayX[i];
                 z = randArrayY[i];
-            } else {
+            } else if(i%4==1) {
                 x = -randArrayX[i];
                 z = -randArrayY[i];
             }
-            model = glm::translate(model,glm::vec3(randArrayY[i],0.0f,randArrayX[i]));
+            else if(i%4==2){
+                x = randArrayX[i];
+                z = -randArrayY[i];
+            }
+            else{
+                x = -randArrayX[i];
+                z = randArrayY[i];
+            }
+            model = glm::translate(model, glm::vec3(randArrayY[i], 0.0f,-randArrayX[i]));
             model = glm::scale(model, glm::vec3(0.3f));
+            model = glm::rotate(model, glm::radians(programState->tempRotation), glm::vec3(0, 1, 0));
             ourShader.setMat4("model", model);
             Koral2.Draw(ourShader);
         }
 
 
-
-        //Renderovanje riba:
+        //Renderovanje riba:(ZAVRSENO EVENTUALNO DODAJ JOS JEDAN MODEL RIBE)
         for(int i = 0; i < 40; i+=2){
             model = glm::mat4(1.0f);
             int x,z;
@@ -606,32 +644,30 @@ int main() {
             Riba1.Draw(ourShader);
         }
 
-        //kamenje
-        /*
-        glDisable(GL_CULL_FACE);
-        glBindVertexArray(transparentVAO2);
-        glBindTexture(GL_TEXTURE_2D, stoneTexture);
-        model = glm::mat4(1.0f);
-        for (unsigned int i = 0; i < stone.size(); i++)
-        {
-            model = glm::mat4(1.0f);
-            model = glm::translate(model, stone[i]);
-            //model = glm::rotate(model, (float)i*60.0f, glm::vec3(0.0, 0.1, 0.0));
-            ourShader.setMat4("model", model);
-            ourShader.setMat4("projection", projection);
-            ourShader.setMat4("view", view);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-        }
-        */
 
-        //object rendering end, start of skybox rendering
+        //ravan
+        glDisable(GL_CULL_FACE);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, diffuseMap);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, specularMap);
+
+        model = glm::mat4(1.0f);
+        ourShader.setMat4("model", model);
+        glBindVertexArray(ravanVAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glEnable(GL_CULL_FACE);
+
+
+        //skybox
         skyboxShader.use();
         skyboxShader.setInt("skybox", 0);
 
         glDepthMask(GL_FALSE);
-        glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
-        skyboxShader.use();
-        view = glm::mat4(glm::mat3(programState->camera.GetViewMatrix())); // remove translation from the view matrix
+        glDepthFunc(GL_LEQUAL);
+
+        view = glm::mat4(glm::mat3(programState->camera.GetViewMatrix()));
         skyboxShader.setMat4("view", view);
         skyboxShader.setMat4("projection", projection);
 
@@ -641,7 +677,7 @@ int main() {
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glBindVertexArray(0);
         glDepthMask(GL_TRUE);
-        glDepthFunc(GL_LESS); // set depth function back to default
+        glDepthFunc(GL_LESS);
 
 
         if (programState->ImGuiEnabled)
@@ -651,6 +687,9 @@ int main() {
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    glDeleteVertexArrays(1, &skyboxVAO);
+    glDeleteBuffers(1, &skyboxVAO);
 
     programState->SaveToFile("resources/program_state.txt");
     delete programState;
@@ -668,6 +707,8 @@ int main() {
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    //if(glfwGetKey(window, GLFW_KEY_L)==GLFW_PRESS)
+    //  programState->spotlight=!programState->spotlight;
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         programState->camera.ProcessKeyboard(FORWARD, deltaTime);
@@ -706,8 +747,7 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos) {
         programState->camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
-// glfw: whenever the mouse scroll wheel scrolls, this callback is called
-// ----------------------------------------------------------------------
+
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
     programState->camera.ProcessMouseScroll(yoffset);
 }
@@ -725,13 +765,31 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
     }
 
-    // reset the camera to default position
+    if (key == GLFW_KEY_C && action == GLFW_PRESS && programState->ImGuiEnabled) {
+        programState->CameraMouseMovementUpdateEnabled = !programState->CameraMouseMovementUpdateEnabled;
+        if (programState->CameraMouseMovementUpdateEnabled == true)
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        else
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    }
+
     if (key == GLFW_KEY_P && action == GLFW_PRESS) {
         programState->camera.Position = glm::vec3(0.0f, 0.0f, 3.0f);
-        programState->camera.Yaw = -90.0f;
+        programState->camera.Yaw = 0.0f;
         programState->camera.Pitch = 0.0f;
         programState->camera.Front = glm::vec3(0.0f, 0.0f, -1.0f);
     }
+
+    if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) {
+        programState->ambientLight = !programState->ambientLight;
+    }
+    if(glfwGetKey(window, GLFW_KEY_K)==GLFW_PRESS){
+        programState->spotlight = !programState->spotlight;
+    }
+    if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS) {
+        programState->plight = !programState->plight;
+    }
+
 
 }
 
@@ -740,6 +798,31 @@ void DrawImGui(ProgramState *programState) {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    if(programState->ImGuiEnabled) {
+        {
+            ImGui::SetNextWindowPos(ImVec2(0, 0));
+            ImGui::SetNextWindowSize(ImVec2(600, 130), ImGuiCond_Once);
+            ImGui::Begin("Camera settings:", NULL, ImGuiWindowFlags_NoCollapse);
+            const Camera &c = programState->camera;
+            ImGui::Text("Camera Info:");
+            ImGui::Indent();
+            ImGui::Bullet();
+            ImGui::Text("Camera position: (%f, %f, %f)", c.Position.x, c.Position.y, c.Position.z);
+            ImGui::Bullet();
+            ImGui::Text("(Yaw, Pitch): (%f, %f)", c.Yaw, c.Pitch);
+            ImGui::Bullet();
+            ImGui::Text("Camera front: (%f, %f, %f)", c.Front.x, c.Front.y, c.Front.z);
+            ImGui::End();
+        }
+
+        {
+            static float f = 0.0f;
+            ImGui::Begin("Hello window");
+            ImGui::DragFloat("pointLight.constant", &programState->ambientLight, 0.05, 0.0, 1.0);
+            ImGui::End();
+        }
+
+    }
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -774,7 +857,72 @@ unsigned int loadCubeMap(vector<std::string> faces)
 
     return textureID;
 }
+unsigned int loadTexture(char const * path)
+{
 
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+
+    int width, height, nrComponents;
+    unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
+    if (data)
+    {
+        GLenum format;
+        if (nrComponents == 1)
+            format = GL_RED;
+        else if (nrComponents == 3)
+            format = GL_RGB;
+        else if (nrComponents == 4)
+            format = GL_RGBA;
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        stbi_image_free(data);
+    }
+    else
+    {
+        std::cout << "Texture failed to load at path: " << path << std::endl;
+        stbi_image_free(data);
+    }
+    return textureID;
+}
+
+int randRange(int low,int high){
+    return rand()%(high-low) + low;
+}
+
+unsigned int quadVAO = 0;
+unsigned int quadVBO;
+void renderQuad()
+{
+    if (quadVAO == 0)
+    {
+        float quadVertices[] = {
+                // positions        // texture Coords
+                -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+                -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+                1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+                1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+        };
+        // setup plane VAO
+        glGenVertexArrays(1, &quadVAO);
+        glGenBuffers(1, &quadVBO);
+        glBindVertexArray(quadVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    }
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindVertexArray(0);
+}
 
 unsigned int cubeVAO = 0;
 unsigned int cubeVBO = 0;
