@@ -173,6 +173,17 @@ int main() {
     //stene
     Model Rock6("resources/objects/Rock_5/Rock_5/Rock_5.obj");
     Rock6.SetShaderTextureNamePrefix("material.");
+    //modeli riba
+    Model Riba1("resources/objects/Models/riba1/13005_Bicolor_dottyback_v2_l3.obj");
+    Model Riba2("resources/objects/Models/riba2/13014_Six_Line_Wrasse_v1_l3.obj");
+    Riba1.SetShaderTextureNamePrefix("material.");
+    Riba2.SetShaderTextureNamePrefix("material.");
+    //modeli korala
+    Model Koral1("resources/objects/Models/crveni_koral/10010_Coral_v1_L3.obj");
+    Model Koral2("resources/objects/Models/sareni_koral/21488_Tree_Coral_v2_NEW.obj");
+    Koral1.SetShaderTextureNamePrefix("material.");
+    Koral2.SetShaderTextureNamePrefix("material.");
+
 
     PointLight& pointLight = programState->pointLight;
     //Pozicija algi
