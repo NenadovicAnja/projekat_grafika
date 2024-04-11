@@ -307,12 +307,12 @@ int main() {
                     glm::vec3 (-0.6f, 0.5f, -2.0f)
             };
 
+    //load textures
     unsigned int diffuseMap = loadTexture(FileSystem::getPath("resources/textures/sand.jpg").c_str());
     unsigned int specularMap = loadTexture(FileSystem::getPath("resources/textures/Black.jpg").c_str());
     unsigned int stoneTexture = loadTexture(FileSystem::getPath("resources/textures/ss.png").c_str());
     //tekstura za podmornicu
     unsigned int PodmornicaTekstura = loadTexture(FileSystem::getPath("resources/textures/metal.jpg").c_str());
-    //load textures
 
     vector<std::string> faces{
             FileSystem::getPath("resources/textures/underwater/uw_rt.jpg"),
@@ -435,15 +435,9 @@ int main() {
         ourShader.use();
         ourShader.setVec3("viewPosition", programState->camera.Position);
         ourShader.setFloat("material.shininess", 32.0f);
-
-        // view/projection transformations
-        //glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom),
-        //                                      (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
-        //glm::mat4 view = programState->camera.GetViewMatrix();
         ourShader.setMat4("projection", projection);
         ourShader.setMat4("view", view);
 
-        //OSTALO JE DA SE NADJE NEKA BOLJA TEKSTURA ZA PODMORNICU I DA SE PROGUSTE MODELI
         // directional light
         ourShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
         if(programState->ambientLight)
@@ -487,7 +481,7 @@ int main() {
 
 
 
-        //Renderovanje vecih stena (ZAVRSENO)
+        //Renderovanje vecih stena:
         for(int i=0;i<50;i+=3){
             model = glm::mat4(1.0f);
             int x,z;
