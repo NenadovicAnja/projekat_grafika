@@ -183,6 +183,10 @@ int main() {
     Model Koral2("resources/objects/Models/sareni_koral/21488_Tree_Coral_v2_NEW.obj");
     Koral1.SetShaderTextureNamePrefix("material.");
     Koral2.SetShaderTextureNamePrefix("material.");
+    //model podmornice
+    Model Podmornica("resources/objects/Models/Podmornica3/Submarine.obj");
+    Podmornica.SetShaderTextureNamePrefix("material.");
+
 
 
     PointLight& pointLight = programState->pointLight;
@@ -481,6 +485,125 @@ int main() {
             model = glm::rotate(model, glm::radians(programState->tempRotation), glm::vec3(0, 1, 0));
             ourShader.setMat4("model", model);
             bigRock.Draw(ourShader);
+        }
+
+        //Renderovanje podmornice: (dodati boju za lignju)
+        model = glm::mat4(1.0f);
+        model = glm::translate(model,glm::vec3(0.0f,15.0f,0.0f));
+        model = glm::scale(model, glm::vec3(0.7f));
+        ourShader.setMat4("model", model);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, PodmornicaTekstura);
+        Podmornica.Draw(ourShader);
+
+
+        //Renderovanje korala:
+        for(int i = 0; i<50; i+=4)
+        {
+            model = glm::mat4(1.0f);
+            int x,z;
+            if(i % 2 == 0){
+                x = randArrayX[i];
+                z = randArrayY[i];
+            } else {
+                x = -randArrayX[i];
+                z = -randArrayY[i];
+            }
+            model = glm::translate(model,glm::vec3(randArrayY[i],0.0f,randArrayX[i]));
+            model = glm::scale(model, glm::vec3(0.04f));
+            model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1, 0, 0));
+            ourShader.setMat4("model", model);
+            Koral1.Draw(ourShader);
+        }
+
+
+
+        for(int i = 0; i<50; i+=6)
+        {
+            model = glm::mat4(1.0f);
+            int x,z;
+            if(i % 2 == 0){
+                x = randArrayX[i];
+                z = randArrayY[i];
+            } else {
+                x = -randArrayX[i];
+                z = -randArrayY[i];
+            }
+            model = glm::translate(model,glm::vec3(randArrayY[i],0.0f,randArrayX[i]));
+            model = glm::scale(model, glm::vec3(0.3f));
+            ourShader.setMat4("model", model);
+            Koral2.Draw(ourShader);
+        }
+
+
+
+        //Renderovanje riba:
+        for(int i = 0; i < 40; i+=2){
+            model = glm::mat4(1.0f);
+            int x,z;
+            if(i % 2 == 0){
+                x = randArrayX[i];
+                z = randArrayY[i];
+            } else {
+                x = -randArrayX[i];
+                z = -randArrayY[i];
+            }
+            model = glm::translate(model, glm::vec3(randArrayX[i], 27.0f, z));
+            model = glm::scale(model, glm::vec3(0.4f));
+            model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1, 0, 0));
+            ourShader.setMat4("model", model);
+            Riba2.Draw(ourShader);
+        }
+
+        for(int i = 0; i < 40; i+=3){
+            model = glm::mat4(1.0f);
+            int x,z;
+            if(i % 2 == 0){
+                x = randArrayX[i];
+                z = randArrayY[i];
+            } else {
+                x = -randArrayX[i];
+                z = -randArrayY[i];
+            }
+            model = glm::translate(model, glm::vec3(randArrayX[i], 14.0f, z));
+            model = glm::scale(model, glm::vec3(0.4f));
+            model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1, 0, 0));
+            ourShader.setMat4("model", model);
+            Riba2.Draw(ourShader);
+        }
+
+        for(int i = 0; i < 40; i+=6){
+            model = glm::mat4(1.0f);
+            int x,z;
+            if(i % 2 == 0){
+                x = randArrayX[i];
+                z = randArrayY[i];
+            } else {
+                x = -randArrayX[i];
+                z = -randArrayY[i];
+            }
+            model = glm::translate(model, glm::vec3(randArrayX[i], 22.0f, z));
+            model = glm::scale(model, glm::vec3(0.4f));
+            model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1, 0, 0));
+            ourShader.setMat4("model", model);
+            Riba1.Draw(ourShader);
+        }
+
+        for(int i = 0; i < 40; i+=4){
+            model = glm::mat4(1.0f);
+            int x,z;
+            if(i % 2 == 0){
+                x = randArrayX[i];
+                z = randArrayY[i];
+            } else {
+                x = -randArrayX[i];
+                z = -randArrayY[i];
+            }
+            model = glm::translate(model, glm::vec3(randArrayX[i], 16.0f, z));
+            model = glm::scale(model, glm::vec3(0.4f));
+            model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1, 0, 0));
+            ourShader.setMat4("model", model);
+            Riba1.Draw(ourShader);
         }
 
         //kamenje
