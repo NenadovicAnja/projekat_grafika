@@ -472,6 +472,24 @@ int main() {
             bigRock.Draw(ourShader);
         }
 
+        //kamenje
+        /*
+        glDisable(GL_CULL_FACE);
+        glBindVertexArray(transparentVAO2);
+        glBindTexture(GL_TEXTURE_2D, stoneTexture);
+        model = glm::mat4(1.0f);
+        for (unsigned int i = 0; i < stone.size(); i++)
+        {
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, stone[i]);
+            //model = glm::rotate(model, (float)i*60.0f, glm::vec3(0.0, 0.1, 0.0));
+            ourShader.setMat4("model", model);
+            ourShader.setMat4("projection", projection);
+            ourShader.setMat4("view", view);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+        */
+
         //object rendering end, start of skybox rendering
         skyboxShader.use();
         skyboxShader.setInt("skybox", 0);
